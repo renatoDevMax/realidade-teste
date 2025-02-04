@@ -44,52 +44,72 @@ export default function ARScene() {
 
         const container = document.getElementById("ar-container");
         if (container) {
+          // Adiciona CSS para ajustar o vídeo
+          const style = document.createElement("style");
+          style.textContent = `
+            body {
+              margin: 0;
+              padding: 0;
+              overflow: hidden;
+              position: fixed;
+              width: 100%;
+              height: 100%;
+            }
+            .a-canvas {
+              width: 100vw !important;
+              height: 100vh !important;
+            }
+            .arjs-video {
+              position: fixed !important;
+              top: 0 !important;
+              left: 50% !important;
+              transform: translateX(-50%) !important;
+              height: 100vh !important;
+              width: calc(100vh * 1.333) !important;
+              max-width: none !important;
+              object-fit: fill !important;
+            }
+          `;
+          document.head.appendChild(style);
+
           container.innerHTML = `
             <a-scene
               embedded
-              arjs='sourceType: webcam; debugUIEnabled: true; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;'
-              renderer='antialias: true; alpha: true;'
-              vr-mode-ui='enabled: false'
+              arjs="sourceType: webcam; 
+                    debugUIEnabled: true; 
+                    detectionMode: mono_and_matrix; 
+                    matrixCodeType: 3x3;"
+              renderer="antialias: true; 
+                       alpha: true;"
+              vr-mode-ui="enabled: false"
             >
               <a-marker
-                preset='hiro'
-                smooth='true'
-                smoothCount='5'
-                smoothTolerance='0.01'
-                smoothThreshold='2'
+                preset="hiro"
+                smooth="true"
+                smoothCount="5"
+                smoothTolerance="0.01"
+                smoothThreshold="2"
               >
                 <a-box
-                  position='0 0.5 0'
-                  scale='1 1 1'
-                  material='color: red; opacity: 0.9;'
-                  animation='property: rotation; to: 0 360 0; dur: 2000; easing: linear; loop: true'
+                  position="0 0.5 0"
+                  scale="1 1 1"
+                  material="color: red; opacity: 0.9;"
+                  animation="property: rotation; to: 0 360 0; dur: 2000; easing: linear; loop: true"
                 ></a-box>
               </a-marker>
               <a-entity camera></a-entity>
             </a-scene>
           `;
 
-          // Ajustar o tamanho do vídeo para mobile
-          const adjustVideoSize = () => {
-            const video = container.querySelector("video");
-            if (video) {
-              const isMobile = /iPhone|iPad|iPod|Android/i.test(
-                navigator.userAgent
-              );
-              if (isMobile) {
-                video.style.objectFit = "cover";
-                video.style.width = "100vw";
-                video.style.height = "100vh";
-                video.style.transform = "none";
-              }
-            }
-          };
-
-          // Debug listeners
+          // Ajustar vídeo após carregar
           const scene = container.querySelector("a-scene");
           scene?.addEventListener("loaded", () => {
             console.log("Scene loaded");
-            adjustVideoSize();
+            const video = document.querySelector(".arjs-video");
+            if (video instanceof HTMLVideoElement) {
+              video.style.width = `${window.innerHeight * 1.333}px`;
+              video.style.height = `${window.innerHeight}px`;
+            }
           });
 
           const marker = container.querySelector("a-marker");
@@ -101,7 +121,13 @@ export default function ARScene() {
           );
 
           // Ajustar quando a orientação mudar
-          window.addEventListener("orientationchange", adjustVideoSize);
+          window.addEventListener("resize", () => {
+            const video = document.querySelector(".arjs-video");
+            if (video instanceof HTMLVideoElement) {
+              video.style.width = `${window.innerHeight * 1.333}px`;
+              video.style.height = `${window.innerHeight}px`;
+            }
+          });
         }
       } catch (error) {
         console.error("Error initializing AR:", error);
@@ -111,12 +137,15 @@ export default function ARScene() {
     loadAR();
 
     return () => {
-      window.removeEventListener("orientationchange", () => {});
+      window.removeEventListener("resize", () => {});
       const scripts = document.querySelectorAll("script[data-ar-script]");
       scripts.forEach((script) => script.remove());
 
       const container = document.getElementById("ar-container");
       if (container) container.innerHTML = "";
+
+      const style = document.querySelector("style");
+      if (style) style.remove();
     };
   }, []);
 
