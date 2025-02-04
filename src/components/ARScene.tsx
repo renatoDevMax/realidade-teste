@@ -1,62 +1,101 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export default function ARScene() {
+  const sceneInitialized = useRef(false);
+
   useEffect(() => {
-    const loadScripts = async () => {
-      const aframeScript = document.createElement("script");
-      aframeScript.src = "https://aframe.io/releases/1.4.0/aframe.min.js";
-      document.head.appendChild(aframeScript);
+    if (sceneInitialized.current) return;
+    sceneInitialized.current = true;
 
-      await new Promise((resolve) => (aframeScript.onload = resolve));
+    const loadAR = async () => {
+      try {
+        // Remover scripts existentes primeiro
+        const existingScripts = document.querySelectorAll(
+          "script[data-ar-script]"
+        );
+        existingScripts.forEach((script) => script.remove());
 
-      const arjsScript = document.createElement("script");
-      arjsScript.src =
-        "https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js";
-      document.head.appendChild(arjsScript);
+        // Carregar A-Frame primeiro
+        const aframe = document.createElement("script");
+        aframe.src = "https://aframe.io/releases/1.3.0/aframe.min.js"; // Versão mais estável
+        aframe.dataset.arScript = "aframe";
+        document.head.appendChild(aframe);
 
-      await new Promise((resolve) => (arjsScript.onload = resolve));
+        await new Promise((resolve) => {
+          aframe.onload = resolve;
+        });
 
-      // Criar a cena AR programaticamente
-      const container = document.getElementById("ar-container");
-      if (container) {
-        container.innerHTML = `
-          <a-scene
-            embedded
-            arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; patternRatio: 0.75;"
-            renderer="logarithmicDepthBuffer: true;"
-            vr-mode-ui="enabled: false"
-          >
-            <a-marker preset="hiro" smooth="true" smoothCount="5">
-              <a-box
-                position="0 0.5 0"
-                material="color: red; opacity: 0.9;"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"
-              ></a-box>
-            </a-marker>
-            <a-entity camera></a-entity>
-          </a-scene>
-        `;
+        // Esperar um pouco para garantir que o A-Frame foi inicializado
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Então carregar AR.js
+        const arjs = document.createElement("script");
+        arjs.src =
+          "https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js";
+        arjs.dataset.arScript = "arjs";
+        document.head.appendChild(arjs);
+
+        await new Promise((resolve) => {
+          arjs.onload = resolve;
+        });
+
+        // Esperar um pouco para garantir que o AR.js foi inicializado
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const container = document.getElementById("ar-container");
+        if (container) {
+          container.innerHTML = `
+            <a-scene
+              embedded
+              arjs='sourceType: webcam; debugUIEnabled: true; detectionMode: mono_and_matrix; matrixCodeType: 3x3;'
+              renderer='antialias: true; alpha: true;'
+              vr-mode-ui='enabled: false'
+            >
+              <a-marker
+                preset='hiro'
+                smooth='true'
+                smoothCount='5'
+                smoothTolerance='0.01'
+                smoothThreshold='2'
+              >
+                <a-box
+                  position='0 0.5 0'
+                  scale='1 1 1'
+                  material='color: red; opacity: 0.9;'
+                  animation='property: rotation; to: 0 360 0; dur: 2000; easing: linear; loop: true'
+                ></a-box>
+              </a-marker>
+              <a-entity camera></a-entity>
+            </a-scene>
+          `;
+
+          // Debug listeners
+          const scene = container.querySelector("a-scene");
+          scene?.addEventListener("loaded", () => console.log("Scene loaded"));
+
+          const marker = container.querySelector("a-marker");
+          marker?.addEventListener("markerFound", () =>
+            console.log("Marker found")
+          );
+          marker?.addEventListener("markerLost", () =>
+            console.log("Marker lost")
+          );
+        }
+      } catch (error) {
+        console.error("Error initializing AR:", error);
       }
     };
 
-    loadScripts();
+    loadAR();
 
     return () => {
-      // Cleanup
-      const scripts = document.querySelectorAll("script");
-      scripts.forEach((script) => {
-        if (script.src.includes("aframe") || script.src.includes("ar.js")) {
-          script.remove();
-        }
-      });
+      const scripts = document.querySelectorAll("script[data-ar-script]");
+      scripts.forEach((script) => script.remove());
 
-      // Limpar o container
       const container = document.getElementById("ar-container");
-      if (container) {
-        container.innerHTML = "";
-      }
+      if (container) container.innerHTML = "";
     };
   }, []);
 
@@ -69,6 +108,8 @@ export default function ARScene() {
         left: 0,
         width: "100%",
         height: "100%",
+        zIndex: 1000,
+        overflow: "hidden",
       }}
     />
   );
