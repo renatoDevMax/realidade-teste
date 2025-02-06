@@ -1,3 +1,14 @@
+"use client";
+
+export default function ARScene() {
+  return (
+    <div>
+      {/* AR content will go here */}
+      AR Scene Component
+    </div>
+  );
+}
+
 const container = document.getElementById("ar-container");
 if (container) {
   // Atualiza o CSS para melhor alinhamento horizontal
